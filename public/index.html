@@ -1,0 +1,587 @@
+<!-- 
+  The way this works:
+  - user types in inputs
+  - the page reloads with URL params of input
+  - function fires and completes
+ -->
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <style>
+    #myBtn {
+      background: none !important;
+      border: none;
+      padding: 0 !important;
+      /*optional*/
+      /* font-family: arial, sans-serif; */
+      /*input has OS specific font-family*/
+      color: #069;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+
+    /* The Modal (background) */
+    .modal {
+      display: none;
+      /* Hidden by default */
+      position: fixed;
+      /* Stay in place */
+      z-index: 1;
+      /* Sit on top */
+      left: 0;
+      top: 0;
+      width: 100%;
+      /* Full width */
+      height: 100%;
+      /* Full height */
+      overflow: auto;
+      /* Enable scroll if needed */
+      background-color: rgb(0, 0, 0);
+      /* Fallback color */
+      background-color: rgba(0, 0, 0, 0.4);
+      /* Black w/ opacity */
+    }
+
+    /* Modal Content/Box */
+    .modal-content {
+      background-color: #fefefe;
+      margin: 15% auto;
+      /* 15% from the top and centered */
+      padding: 20px;
+      border: 1px solid #888;
+      width: 80%;
+      /* Could be more or less, depending on screen size */
+    }
+
+    /* The Close Button */
+    .close {
+      color: #aaa;
+      float: right;
+      font-size: 28px;
+      font-weight: bold;
+    }
+
+    .close:hover,
+    .close:focus {
+      color: black;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    h3 {
+      text-decoration: underline;
+    }
+
+    table,
+    th,
+    td {
+      border: 1px solid black;
+    }
+
+    td {
+      padding: 5px;
+    }
+
+    p code {
+      font-size: large;
+    }
+
+    html,
+    body {
+      height: 100%;
+    }
+
+    table {
+      opacity: 1 !important;
+    }
+
+    html {
+      display: table;
+      margin: auto;
+
+      background-color: rgb(228, 228, 247, 0.4);
+      /* opacity: 0.4; */
+      background-image: radial-gradient(rgb(68, 76, 247, 0.4) 1px, #e5e5f7 1px);
+      background-size: 20px 20px;
+    }
+
+    body {
+      display: table-cell;
+      vertical-align: middle;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/mathjs@9.3.2/lib/browser/math.min.js"></script>
+  <script>
+    const significantFigures = 4;
+    let evaluate = math.evaluate;
+
+
+    /**
+     *
+     * @param { Derivative of the function you're trying to approximate. Function of y and x.} f
+     * @param {* step size} h
+     * @param {* first x (initial)} startingX
+     * @param {* first y (initial--y0)} startingY
+     * @param {*last x. must be reachable by step size (h)} endingX
+     */
+    function eulersMethod(f, h, startingX, startingY, endingX) {
+      let results = []; // an array of tuples: [[x,y], [x,y], [x,y]...]
+      let yprime = f;
+
+      results.push([startingX, startingY]);
+
+      let lastY = startingY;
+      for (let x = startingX + h; x <= endingX; x += h) {
+        x = +x.toFixed(significantFigures);
+
+        let lastX = x - h;
+
+        let y = evaluate(`y + h*(${yprime})`, {
+          y: lastY,
+          x: lastX,
+          h: h
+        });
+        lastY = y;
+
+        let roundedY = +y.toFixed(significantFigures);
+        results.push([x, roundedY]);
+      }
+
+      return results;
+    }
+
+    function eulersImprovedMethod(f, h, startingX, startingY, endingX) {
+      let results = []; // an array of tuples: [[x,y], [x,y], [x,y]...]
+      let yprime = f;
+
+      results.push([startingX, startingY]);
+
+      let lastY = startingY;
+      for (let x = startingX + h; x <= endingX; x += h) {
+        x = +x.toFixed(significantFigures);
+        let lastX = x - h;
+
+        let fOFn = evaluate(`${yprime}`, {
+          x: lastX,
+          y: lastY,
+        })
+
+        let yOFnplus1STAR = evaluate(`y + h * (${fOFn})`, {
+          y: lastY,
+          h: h,
+        });
+        let fOFnplus1 = evaluate(`${yprime}`, {
+          x: x,
+          y: yOFnplus1STAR
+        })
+
+
+
+        let y = evaluate(`y + h * ((${fOFn} + ${fOFnplus1})/2)`, {
+          y: lastY,
+          // x: lastX, 
+          // ^^ shouldn't need an x scope here.
+          h: h
+        });
+        lastY = y;
+
+        let roundedY = +y.toFixed(significantFigures);
+        results.push([x, roundedY]);
+      }
+
+      return results;
+    }
+
+
+    function rungeKutta4(f, h, startingX, startingY, endingX) {
+      let results = []; // an array of tuples: [[x,y], [x,y], [x,y]...]
+      let yprime = f;
+
+      results.push([startingX, startingY]);
+
+      let lastY = startingY;
+      for (let x = startingX + h; x <= endingX; x += h) {
+        x = +x.toFixed(significantFigures);
+
+        let lastX = x - h;
+
+        let k1 = evaluate(`${yprime}`, {
+          x: lastX,
+          y: lastY
+        });
+        let k2 = evaluate(`${yprime}`, {
+          x: lastX + h / 2,
+          y: lastY + (h / 2) * k1
+        });
+        let k3 = evaluate(`${yprime}`, {
+          x: lastX + h / 2,
+          y: lastY + (h / 2) * k2
+        });
+        let k4 = evaluate(`${yprime}`, {
+          x: lastX + h,
+          y: lastY + (h) * k3
+        });
+        let T4 = (1 / 6) * (k1 + 2 * k2 + 2 * k3 + k4);
+
+        let y = evaluate(`y + h*(T)`, {
+          y: lastY,
+          T: T4,
+          h: h
+        });
+        lastY = y;
+
+        let roundedY = +y.toFixed(significantFigures);
+        results.push([x, roundedY]);
+      }
+
+      return results;
+    }
+
+
+    /**
+     * Generating a Table with JavaScript.
+     */
+
+    function generateTableHead(table, data) {
+      let thead = table.createTHead();
+      let row = thead.insertRow();
+      for (let key of data) {
+        let th = document.createElement("th");
+        let text = document.createTextNode(key);
+        th.appendChild(text);
+        row.appendChild(th);
+      }
+    }
+
+    function generateTable(table, data) {
+      for (let element of data) {
+        let row = table.insertRow();
+        for (key in element) {
+          let cell = row.insertCell();
+          let text = document.createTextNode(element[key]);
+          cell.appendChild(text);
+        }
+      }
+    }
+  </script>
+</head>
+
+<body>
+  <!-- Trigger/Open The Modal -->
+  <!-- <button id="myBtn">Open Modal</button> -->
+  <!-- The Modal -->
+  <div id="myModal" class="modal">
+
+    <!-- Modal content -->
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <pre>
+        <code>
+    function eulersMethod(f, h, startingX, startingY, endingX) {
+      let results = []; // an array of tuples: [[x,y], [x,y], [x,y]...]
+      let yprime = f;
+
+      results.push([startingX, startingY]);
+
+      let lastY = startingY;
+      for (let x = startingX + h; x <= endingX; x += h) {
+        x = +x.toFixed(4);
+
+        let lastX = x - h;
+
+        let y = evaluate(`y + h*(${yprime})`, {
+          y: lastY,
+          x: lastX,
+          h: h
+        });
+        lastY = y;
+
+        let roundedY = +y.toFixed(4);
+        results.push([x, roundedY]);
+      }
+
+      return results;
+    }
+
+
+    function eulersImprovedMethod(f, h, startingX, startingY, endingX) {
+      let results = []; // an array of tuples: [[x,y], [x,y], [x,y]...]
+      let yprime = f;
+
+      results.push([startingX, startingY]);
+
+      let lastY = startingY;
+      for (let x = startingX + h; x <= endingX; x += h) {
+        x = +x.toFixed(4);
+        let lastX = x - h;
+
+        let fOFn = evaluate(`${yprime}`, {
+          x: lastX,
+          y: lastY,
+        })
+
+        let yOFnplus1STAR = evaluate(`y + h * (${fOFn})`, {
+          y: lastY,
+          h: h,
+        });
+        let fOFnplus1 = evaluate(`${yprime}`, {
+          x: x,
+          y: yOFnplus1STAR
+        })
+
+
+
+        let y = evaluate(`y + h * ((${fOFn} + ${fOFnplus1})/2)`, {
+          y: lastY,
+          // x: lastX, 
+          // ^^ shouldn't need an x scope here.
+          h: h
+        });
+        lastY = y;
+
+        let roundedY = +y.toFixed(4);
+        results.push([x, roundedY]);
+      }
+
+      return results;
+    }
+        </code>
+      </pre>
+    </div>
+
+  </div>
+
+
+
+  <h1>Function Approximation Methods<sup><button id="myBtn">?</button></sup><br /> and Error Calculator</h1>
+  <h3>Inputs (<button onclick="clearInputs()">Clear Inputs</button>)</h3>
+
+  <form>
+    <label for="fDerivative">f: </label>
+    <input type="text" name="fDerivative" id="fDerivative" placeholder="2x" />
+    <br />
+    <label for="h">h: </label>
+    <input type="number" step=any name="h" id="h" placeholder="0.1" />
+    <br />
+    <label for="startingX">Initial x: </label>
+    <input type="number" step=any name="startingX" id="startingX" placeholder="2" />
+    <br />
+    <label for="startingY">Initial y: </label>
+    <input type="number" step=any name="startingY" id="startingY" placeholder="4" />
+    <br />
+    <label for="endingX">Ending x (trying to approximate y(x)): </label>
+    <input type="number" step=any name="endingX" id="endingX" placeholder="3" />
+    <br />
+    <label for="originalFunction">Original Function (if you want to calculate error): </label>
+    <input type="text" name="originalFunction" id="originalFunction" placeholder="x^2" />
+    <br />
+    <p>Please select the <strong>method:</strong></p>
+    <input type="radio" id="eulers" name="method" value="eulers" selected>
+    <label for="eulers">Eulers</label><br>
+    <input type="radio" id="eulersimproved" name="method" value="eulersimproved">
+    <label for="eulersimproved">Eulers Improved</label><br>
+    <input type="radio" id="rk4" name="method" value="rk4">
+    <label for="rk4">Runge-Kutta 4th Order</label><br>
+    <!-- <input type="radio" id="other" name="gender" value="other">
+  <label for="other">Other</label> -->
+
+    <button type="submit" style="margin-top: 10px;margin-left: 27px;transform: scale(1.5);">Submit</button>
+  </form>
+
+
+
+  <h3>Results (<i><span id="methodtext"></span></i>)</h3>
+
+  <div id="results" style="display: none;">
+    <p>The <strong>approximation</strong> is <code id="approximation"></code></p>
+    <!-- <p>
+      <span>The <strong>absolute error</strong> is <code id="absoluteerror"></code></span>
+      <br />
+      <span>The <strong>realtive error</strong> is <code id="relativeerror"></code></span></p> -->
+
+    <table id="methodresults"></table>
+  </div>
+
+  <script>
+    /*******START MODAL CODE********/
+    // Get the modal
+    var modal = document.getElementById("myModal");
+
+    // Get the button that opens the modal
+    var btn = document.getElementById("myBtn");
+
+    // Get the <span> element that closes the modal
+    var span = document.getElementsByClassName("close")[0];
+
+    // When the user clicks on the button, open the modal
+    btn.onclick = function () {
+      modal.style.display = "block";
+    }
+
+    // When the user clicks on <span> (x), close the modal
+    span.onclick = function () {
+      modal.style.display = "none";
+    }
+
+    // When the user clicks anywhere outside of the modal, close it
+    window.onclick = function (event) {
+      if (event.target == modal) {
+        modal.style.display = "none";
+      }
+    }
+
+    /***** END MODAL CODE *******/
+  </script>
+
+  <script>
+    function clearInputs() {
+      window.location.search = ""
+    }
+
+    // on load, fill the values of the inputs if there are URL parameters.
+    var hashParams = window.location.search.replaceAll("%2B0", "+").replaceAll("%2B", "+").replaceAll("%2F", "/")
+      .substr(1).split(
+        '&'); // substr(1) to remove the `#`
+    console.log(hashParams)
+    for (var i = 0; i < hashParams.length; i++) {
+      var p = hashParams[i].split('=');
+      if (document.getElementById(p[0])) {
+        document.getElementById(p[0]).value = decodeURIComponent(p[1]);
+      }
+
+      if (p[0] == 'method') {
+        document.getElementById(p[1]).checked = true;
+      }
+    }
+
+    const form = document.querySelector('form');
+    form.addEventListener('submit', handleSubmit);
+
+    function handleSubmit(event) {}
+
+    // get URL parameters and initiate function
+    var search = location.search.replaceAll("%2B0", "+").replaceAll("%2F", "/").replaceAll("%2B", "+").substring(1);
+    let urlParamObject = JSON.parse('{"' + decodeURI(search).replace(/"/g, '\\"').replace(/&/g, '","').replace(/=/g,
+      '":"') + '"}')
+
+    doApproximationMethod(urlParamObject);
+
+    function doApproximationMethod(entries) {
+      document.getElementById("methodresults").innerHTML = "";
+
+      let {
+        method
+      } = entries;
+      let {
+        originalFunction
+      } = entries;
+      let {
+        fDerivative
+      } = entries;
+      let h = parseFloat(entries.h) || 0.1;
+      let startingX = parseFloat(entries.startingX) || 0;
+      let startingY = parseFloat(entries.startingY) || 0;
+      let endingX = parseFloat(entries.endingX) || 0;
+      let endingY = parseFloat(entries.endingY) || 0;
+
+      document.getElementById('methodtext').innerHTML = method;
+
+
+      let approximationMethodResult = [];
+
+      if (method == "eulersimproved") {
+        approximationMethodResult = eulersImprovedMethod(
+          fDerivative,
+          h,
+          startingX,
+          startingY,
+          endingX,
+        );
+      } else if (method == "eulers") {
+        approximationMethodResult = eulersMethod(
+          fDerivative,
+          h,
+          startingX,
+          startingY,
+          endingX,
+        );
+      } else if (method == 'rk4') {
+        approximationMethodResult = rungeKutta4(
+          fDerivative,
+          h,
+          startingX,
+          startingY,
+          endingX,
+        );
+      } else {
+        alert('Please select an APPROXIMATION METHOD.')
+      }
+
+      let table = document.getElementById("methodresults");
+      let n = 0;
+      let tableData = approximationMethodResult.map(el => {
+        let res = {
+          n,
+          x: el[0],
+          y: el[1]
+        }
+
+        // add error data if there is an original function
+        if (originalFunction) {
+          let trueValue = evaluate(originalFunction, {
+            x: res.x
+          })
+
+          res["true value"] = +trueValue.toFixed(4);
+
+          let absoluteError = +Math.abs(trueValue - res.y).toFixed(4);
+          res["absolute error"] = absoluteError;
+
+          let relativeErrorPercent = +((absoluteError / Math.abs(trueValue)) * 100).toFixed(4)
+          res["relative error"] = `${relativeErrorPercent}%`;
+        }
+        n++;
+        return res;
+      })
+
+      let data = Object.keys(tableData[0]);
+      generateTableHead(table, data);
+      generateTable(table, tableData);
+
+      let result = approximationMethodResult.pop();
+      document.getElementById("approximation").innerHTML = `${result[1]}`
+      console.log(`RESULTS: ${result}`);
+
+      /**
+      let error = {}
+
+      if (originalFunction) {
+        let error2 = calculateErrorOnEulersMethod(
+          originalFunction, {
+            x: endingX,
+            y: endingY
+          },
+          eulersMethodRes,
+        );
+        error = error2;
+        console.log(error2)
+      }
+
+      document.getElementById("absoluteerror").innerHTML = error.absoluteError;
+      document.getElementById("relativeerror").innerHTML = error.relativeError;
+      **/
+
+      // SHOW THE DIV
+      document.getElementById("results").style.display = "block";
+
+    }
+  </script>
+
+</body>
+
+</html>
